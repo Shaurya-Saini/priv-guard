@@ -1,293 +1,375 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
-class ScanAnalysisScreen extends StatefulWidget {
-  final Map<String, dynamic> mediaItem;
-
-  const ScanAnalysisScreen({Key? key, required this.mediaItem})
-      : super(key: key);
-
-  @override
-  _ScanAnalysisScreenState createState() => _ScanAnalysisScreenState();
+void main() {
+  runApp(MyApp());
 }
 
-class _ScanAnalysisScreenState extends State<ScanAnalysisScreen> {
-  bool _isScanning = false;
-  Map<String, dynamic>? _analysisResult;
-
+class MyApp extends StatelessWidget {
   @override
-  void initState() {
-    super.initState();
-    _startAnalysis();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Post Types App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: PostScreen(),
+    );
   }
+}
 
-  void _startAnalysis() {
+// Enum to define different post types
+enum PostType { text, image, video }
+
+// Model class to represent a post
+class Post {
+  final String id;
+  final PostType type;
+  final String? textContent;
+  final String? imagePath;
+  final DateTime createdAt;
+
+  Post({
+    required this.id,
+    required this.type,
+    this.textContent,
+    this.imagePath,
+    required this.createdAt,
+  });
+}
+
+class PostScreen extends StatefulWidget {
+  @override
+  _PostScreenState createState() => _PostScreenState();
+}
+
+class _PostScreenState extends State<PostScreen> {
+  List<Post> posts = [];
+  final TextEditingController _textController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+  int _postIdCounter = 1;
+
+  // Function to handle TEXT posts
+  void createTextPost() {
+    if (_textController.text.trim().isEmpty) {
+      _showMessage('Please enter some text');
+      return;
+    }
+
+    final newPost = Post(
+      id: 'post_${_postIdCounter++}',
+      type: PostType.text,
+      textContent: _textController.text.trim(),
+      createdAt: DateTime.now(),
+    );
+
     setState(() {
-      _isScanning = true;
+      posts.insert(0, newPost); // Add to beginning of list
     });
 
-    // Simulate analysis process
-    Future.delayed(Duration(seconds: 3), () {
-      setState(() {
-        _isScanning = false;
-        _analysisResult = {
-          'riskScore': 75,
-          'riskLevel': 'Medium',
-          'detectedRisks': [
-            'Personal information visible',
-            'Location data detected',
-            'Faces identified',
-          ],
-          'suggestions': [
-            'Blur faces before posting',
-            'Remove location metadata',
-            'Check privacy settings',
-          ],
-        };
-      });
-    });
+    _textController.clear();
+    _showMessage('Text post created successfully!');
   }
 
-  Color _getRiskColor(int score) {
-    if (score >= 80) return Colors.red;
-    if (score >= 50) return Colors.orange;
-    return Colors.green;
+  // Function to handle IMAGE posts
+  void createImagePost() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1800,
+        maxHeight: 1800,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final newPost = Post(
+          id: 'post_${_postIdCounter++}',
+          type: PostType.image,
+          imagePath: image.path,
+          createdAt: DateTime.now(),
+        );
+
+        setState(() {
+          posts.insert(0, newPost);
+        });
+
+        _showMessage('Image post created successfully!');
+      }
+    } catch (e) {
+      _showMessage('Error picking image: $e');
+    }
+  }
+
+  // Function to handle VIDEO posts (placeholder)
+  void createVideoPost() {
+    _showMessage('Video posts will be available in future updates');
+  }
+
+  // Function to delete a post
+  void deletePost(String postId) {
+    setState(() {
+      posts.removeWhere((post) => post.id == postId);
+    });
+    _showMessage('Post deleted');
+  }
+
+  // Function to show messages to user
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Function to format date for display
+  String formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} at ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Privacy Analysis',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: Text('Posts App'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
       ),
       body: Column(
         children: [
-          // Media Preview
+          // Create Post Section
           Container(
-            width: double.infinity,
-            height: 200,
-            margin: EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
+              color: Colors.grey[100],
+              border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  widget.mediaItem['thumbnail'],
-                  size: 64,
-                  color: Colors.grey[600],
-                ),
-                SizedBox(height: 8),
                 Text(
-                  widget.mediaItem['title'],
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
+                  'Create a New Post',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 16),
+                
+                // Text input field
+                TextField(
+                  controller: _textController,
+                  decoration: InputDecoration(
+                    hintText: 'What\'s on your mind?',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.all(12),
                   ),
+                  maxLines: 3,
+                ),
+                SizedBox(height: 16),
+                
+                // Action buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: createTextPost,
+                      icon: Icon(Icons.text_fields),
+                      label: Text('Text Post'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: createImagePost,
+                      icon: Icon(Icons.image),
+                      label: Text('Image Post'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: createVideoPost,
+                      icon: Icon(Icons.video_library),
+                      label: Text('Video Post'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-
+          
+          // Posts List Section
           Expanded(
-            child: _isScanning
+            child: posts.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.indigo[600]!),
-                        ),
-                        SizedBox(height: 24),
+                        Icon(Icons.post_add, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
                         Text(
-                          'Analyzing privacy risks...',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[700],
-                          ),
+                          'No posts yet',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
                         ),
-                        SizedBox(height: 8),
                         Text(
-                          'This may take a few moments',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
+                          'Create your first post above!',
+                          style: TextStyle(color: Colors.grey),
                         ),
                       ],
                     ),
                   )
-                : _analysisResult != null
-                    ? SingleChildScrollView(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Risk Score Card
-                            Card(
-                              elevation: 3,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.all(20),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'Privacy Risk Score',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                : ListView.builder(
+                    itemCount: posts.length,
+                    itemBuilder: (context, index) {
+                      final post = posts[index];
+                      return Card(
+                        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Post header with type and delete button
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _getPostTypeColor(post.type),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    SizedBox(height: 16),
-                                    CircularProgressIndicator(
-                                      value:
-                                          _analysisResult!['riskScore'] / 100,
-                                      strokeWidth: 8,
-                                      backgroundColor: Colors.grey[300],
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        _getRiskColor(
-                                            _analysisResult!['riskScore']),
-                                      ),
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      '${_analysisResult!['riskScore']}/100',
+                                    child: Text(
+                                      _getPostTypeText(post.type),
                                       style: TextStyle(
-                                        fontSize: 24,
+                                        color: Colors.white,
+                                        fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: _getRiskColor(
-                                            _analysisResult!['riskScore']),
                                       ),
                                     ),
-                                    Text(
-                                      '${_analysisResult!['riskLevel']} Risk',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            SizedBox(height: 20),
-
-                            // Detected Risks
-                            Text(
-                              'Detected Risks',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            ...(_analysisResult!['detectedRisks'] as List).map(
-                              (risk) => Card(
-                                margin: EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  leading: Icon(
-                                    Icons.warning_amber,
-                                    color: Colors.orange[600],
                                   ),
-                                  title: Text(risk),
-                                ),
-                              ),
-                            ),
-
-                            SizedBox(height: 20),
-
-                            // Suggestions
-                            Text(
-                              'Privacy Suggestions',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            ...(_analysisResult!['suggestions'] as List).map(
-                              (suggestion) => Card(
-                                margin: EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  leading: Icon(
-                                    Icons.lightbulb_outline,
-                                    color: Colors.blue[600],
+                                  IconButton(
+                                    onPressed: () => deletePost(post.id),
+                                    icon: Icon(Icons.delete, color: Colors.red),
                                   ),
-                                  title: Text(suggestion),
+                                ],
+                              ),
+                              SizedBox(height: 12),
+                              
+                              // Post content based on type
+                              _buildPostContent(post),
+                              
+                              SizedBox(height: 12),
+                              
+                              // Post timestamp
+                              Text(
+                                'Posted on ${formatDate(post.createdAt)}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : Center(
-                        child: Text(
-                          'Analysis failed. Please try again.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
+                            ],
                           ),
                         ),
-                      ),
-          ),
-
-          // Footer
-          Container(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                if (_analysisResult != null)
-                  ElevatedButton(
-                    onPressed: () {
-                      // Post with suggestions applied
+                      );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo[600],
-                      foregroundColor: Colors.white,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      minimumSize: Size(double.infinity, 50),
-                    ),
-                    child: Text(
-                      'Apply Suggestions & Post',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ),
-                SizedBox(height: 8),
-                Text(
-                  '© 2024 PrivGuard - Your Privacy Guardian',
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
     );
+  }
+
+  // Function to build different content based on post type
+  Widget _buildPostContent(Post post) {
+    switch (post.type) {
+      case PostType.text:
+        return Text(
+          post.textContent ?? '',
+          style: TextStyle(fontSize: 16),
+        );
+      
+      case PostType.image:
+        if (post.imagePath != null && File(post.imagePath!).existsSync()) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.file(
+              File(post.imagePath!),
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          );
+        } else {
+          return Container(
+            height: 200,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.broken_image, size: 64, color: Colors.grey),
+          );
+        }
+      
+      case PostType.video:
+        return Container(
+          height: 200,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.purple[100],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.purple),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.video_library, size: 64, color: Colors.purple),
+              SizedBox(height: 8),
+              Text(
+                'Video posts will be available\nin future updates',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.purple),
+              ),
+            ],
+          ),
+        );
+    }
+  }
+
+  // Function to get color for different post types
+  Color _getPostTypeColor(PostType type) {
+    switch (type) {
+      case PostType.text:
+        return Colors.green;
+      case PostType.image:
+        return Colors.orange;
+      case PostType.video:
+        return Colors.purple;
+    }
+  }
+
+  // Function to get text label for different post types
+  String _getPostTypeText(PostType type) {
+    switch (type) {
+      case PostType.text:
+        return 'TEXT';
+      case PostType.image:
+        return 'IMAGE';
+      case PostType.video:
+        return 'VIDEO';
+    }
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
   }
 }
