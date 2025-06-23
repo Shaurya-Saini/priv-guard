@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:html' as html;
+import 'dart:typed_data';
 import 'scan_analysis_screen.dart';
 
 class GalleryScreen extends StatefulWidget {
@@ -120,28 +123,35 @@ class _GalleryScreenState extends State<GalleryScreen> {
   void _deleteItem(Map<String, dynamic> item) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: Text('Delete ${item['title']}?'),
           content: Text('This action cannot be undone.'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text('Cancel'),
             ),
             TextButton(
               onPressed: () {
+                // Close dialog first
+                Navigator.of(dialogContext).pop();
+                
+                // Then update state and show snackbar
                 setState(() {
                   _mediaItems
                       .removeWhere((element) => element['id'] == item['id']);
                 });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${item['title']} deleted'),
-                    backgroundColor: Colors.red[600],
-                  ),
-                );
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${item['title']} deleted'),
+                      backgroundColor: Colors.red[600],
+                    ),
+                  );
+                }
               },
               child: Text('Delete', style: TextStyle(color: Colors.red)),
             ),
@@ -196,7 +206,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       subtitle: Text('Choose photos or videos from gallery'),
                       onTap: () {
                         Navigator.pop(context);
-                        // Upload media functionality
+                        _pickImageFromGallery();
                       },
                     ),
                     ListTile(
@@ -208,7 +218,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       subtitle: Text('Take a photo with camera'),
                       onTap: () {
                         Navigator.pop(context);
-                        // Capture functionality
+                        _captureImageFromCamera();
                       },
                     ),
                     ListTile(
@@ -221,7 +231,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       subtitle: Text('Write a text-based post'),
                       onTap: () {
                         Navigator.pop(context);
-                        // Create text post functionality
+                        _showCreateTextPostDialog();
                       },
                     ),
                     SizedBox(height: 20),
@@ -233,6 +243,221 @@ class _GalleryScreenState extends State<GalleryScreen> {
         );
       },
     );
+  }
+
+  // Fixed text post creation method
+  void _showCreateTextPostDialog() {
+    final TextEditingController textController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setDialogState) {
+            return AlertDialog(
+              title: const Text("Create Text Post"),
+              content: TextField(
+                controller: textController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: "What's on your mind?",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    textController.dispose();
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final text = textController.text.trim();
+                    if (text.isNotEmpty) {
+                      // Close dialog first
+                      Navigator.of(dialogContext).pop();
+                      
+                      // Then update state and show snackbar
+                      setState(() {
+                        _mediaItems.add({
+                          'id': DateTime.now().millisecondsSinceEpoch,
+                          'type': 'text',
+                          'thumbnail': Icons.text_fields,
+                          'title': text.length > 20 ? text.substring(0, 20) + '...' : text,
+                          'text': text,
+                        });
+                      });
+                      
+                      // Show success message
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Text post created successfully'),
+                            backgroundColor: Colors.green[600],
+                          ),
+                        );
+                      }
+                    }
+                    textController.dispose();
+                  },
+                  child: const Text("Post"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Web-compatible image picker from gallery
+  Future<void> _pickImageFromGallery() async {
+    try {
+      if (kIsWeb) {
+        final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+        uploadInput.accept = 'image/*';
+        uploadInput.click();
+
+        uploadInput.onChange.listen((e) async {
+          final files = uploadInput.files;
+          if (files != null && files.isNotEmpty) {
+            final file = files[0];
+            final reader = html.FileReader();
+            
+            reader.onLoadEnd.listen((e) {
+              if (mounted) {
+                setState(() {
+                  _mediaItems.add({
+                    'id': DateTime.now().millisecondsSinceEpoch,
+                    'type': 'image',
+                    'thumbnail': Icons.image,
+                    'title': file.name,
+                    'webImageData': reader.result as Uint8List,
+                    'fileName': file.name,
+                  });
+                });
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Image uploaded successfully'),
+                    backgroundColor: Colors.green[600],
+                  ),
+                );
+              }
+            });
+            
+            reader.readAsArrayBuffer(file);
+          }
+        });
+      } else {
+        // For mobile platforms, show a message about adding the image_picker dependency
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Image picker requires adding image_picker dependency for mobile platforms'),
+              backgroundColor: Colors.orange[600],
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: ${e.toString()}'),
+            backgroundColor: Colors.red[600],
+          ),
+        );
+      }
+    }
+  }
+
+  // Web-compatible image capture simulation (web doesn't support direct camera access easily)
+  Future<void> _captureImageFromCamera() async {
+    try {
+      if (kIsWeb) {
+        // For web, we'll redirect to gallery picker since camera access is more complex
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Camera capture not available on web. Please use gallery upload.'),
+            backgroundColor: Colors.blue[600],
+          ),
+        );
+        _pickImageFromGallery();
+      } else {
+        // For mobile platforms, show a message about adding the image_picker dependency
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Camera capture requires adding image_picker dependency for mobile platforms'),
+              backgroundColor: Colors.orange[600],
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to capture image: ${e.toString()}'),
+            backgroundColor: Colors.red[600],
+          ),
+        );
+      }
+    }
+  }
+
+  // Helper method to build image widget
+  Widget _buildImageWidget(Map<String, dynamic> item) {
+    if (kIsWeb && item['webImageData'] != null) {
+      // For web, display image from Uint8List
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(
+          item['webImageData'],
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+        ),
+      );
+    } else if (!kIsWeb && item['path'] != null) {
+      // For mobile, this would display from file path (requires image_picker)
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          color: Colors.grey[300],
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.image, color: Colors.grey[600]),
+                Text(
+                  'Image\n(Add image_picker\ndependency)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      return Center(
+        child: Icon(
+          item['thumbnail'],
+          size: 32,
+          color: Colors.indigo[400],
+        ),
+      );
+    }
   }
 
   @override
@@ -308,13 +533,16 @@ class _GalleryScreenState extends State<GalleryScreen> {
                             ),
                             child: Stack(
                               children: [
-                                Center(
-                                  child: Icon(
-                                    item['thumbnail'],
-                                    size: 32,
-                                    color: Colors.indigo[400],
-                                  ),
-                                ),
+                                // Display actual image if path exists, otherwise show icon
+                                item['type'] == 'image' 
+                                    ? _buildImageWidget(item)
+                                    : Center(
+                                        child: Icon(
+                                          item['thumbnail'],
+                                          size: 32,
+                                          color: Colors.indigo[400],
+                                        ),
+                                      ),
                                 if (item['type'] == 'video')
                                   Positioned(
                                     bottom: 4,
