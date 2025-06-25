@@ -511,7 +511,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
     );
   }
 
-  // Fixed text post creation method
   void _showCreateTextPostDialog() {
     final TextEditingController textController = TextEditingController();
 
@@ -519,66 +518,69 @@ class _GalleryScreenState extends State<GalleryScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setDialogState) {
-            return AlertDialog(
-              title: const Text("Create Text Post"),
-              content: TextField(
-                controller: textController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: "What's on your mind?",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    textController.dispose();
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: const Text("Cancel"),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final text = textController.text.trim();
-                    if (text.isNotEmpty) {
-                      // Close dialog first
-                      Navigator.of(dialogContext).pop();
+        return AlertDialog(
+          title: const Text("Create Text Post"),
+          content: TextField(
+            controller: textController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: "What's on your mind?",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                // Dispose controller after a short delay to ensure dialog is fully closed
+                Future.delayed(Duration(milliseconds: 100), () {
+                  textController.dispose();
+                });
+              },
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final text = textController.text.trim();
+                Navigator.of(dialogContext).pop();
 
-                      // Then update state and show snackbar
-                      setState(() {
-                        _mediaItems.add({
-                          'id': DateTime.now().millisecondsSinceEpoch,
-                          'type': 'text',
-                          'thumbnail': Icons.text_fields,
-                          'title': text.length > 20
-                              ? text.substring(0, 20) + '...'
-                              : text,
-                          'text': text,
-                        });
-                      });
+                // Dispose controller after a short delay
+                Future.delayed(Duration(milliseconds: 100), () {
+                  textController.dispose();
+                });
 
-                      // Show success message
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Text post created successfully'),
-                            backgroundColor: Colors.green[600],
-                          ),
-                        );
-                      }
-                    }
-                    textController.dispose();
-                  },
-                  child: const Text("Post"),
-                ),
-              ],
-            );
-          },
+                if (text.isNotEmpty) {
+                  _addTextPost(text);
+                }
+              },
+              child: const Text("Post"),
+            ),
+          ],
         );
       },
     );
+  }
+
+// Separate method to add text post
+  void _addTextPost(String text) {
+    if (mounted) {
+      setState(() {
+        _mediaItems.add({
+          'id': DateTime.now().millisecondsSinceEpoch,
+          'type': 'text',
+          'thumbnail': Icons.text_fields,
+          'title': text.length > 20 ? text.substring(0, 20) + '...' : text,
+          'text': text,
+        });
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Text post created successfully'),
+          backgroundColor: Colors.green[600],
+        ),
+      );
+    }
   }
 
   // MODIFIED: Cross-platform image picker from gallery
