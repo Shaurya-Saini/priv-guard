@@ -14,20 +14,36 @@ class GalleryScreen extends StatefulWidget {
   _GalleryScreenState createState() => _GalleryScreenState();
 }
 
-class _GalleryScreenState extends State<GalleryScreen> {
+class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateMixin {
   final ImagePicker _picker = ImagePicker();
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   final String _keyStorageName = 'gallery_aes_key';
   final String _textPostsFileName = 'text_posts_encrypted.dat';
   encrypt.Key? _aesKey;
   bool _isLoading = true;
+  bool _showAddOptions = false;
+  late AnimationController _fabAnimationController;
+  late Animation<double> _fabAnimation;
 
   List<Map<String, dynamic>> _mediaItems = [];
 
   @override
   void initState() {
     super.initState();
+    _fabAnimationController = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _fabAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeInOut),
+    );
     _initializeApp();
+  }
+
+  @override
+  void dispose() {
+    _fabAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _initializeApp() async {
@@ -66,22 +82,15 @@ class _GalleryScreenState extends State<GalleryScreen> {
       }
     } catch (e) {
       print('Error initializing encryption key: $e');
-      // Create a fallback key
       _aesKey = encrypt.Key.fromSecureRandom(32);
     }
   }
 
   Future<void> _loadAllData() async {
     try {
-      // First load text posts
       await _loadEncryptedTextPosts();
-
-      // Then load images
       await _loadEncryptedImages();
-
-      // Add default items if this is first run
       await _addDefaultItemsIfNeeded();
-
       print('Loaded ${_mediaItems.length} total items');
     } catch (e) {
       print('Error loading data: $e');
@@ -94,65 +103,29 @@ class _GalleryScreenState extends State<GalleryScreen> {
       final flagFile = File('${dir.path}/first_run_complete.flag');
 
       if (!await flagFile.exists()) {
-        // Add default items
         final defaultItems = [
-          {
-            'id': 1,
-            'type': 'image',
-            'thumbnail': Icons.image,
-            'title': 'Image 1'
-          },
+          {'id': 1, 'type': 'image', 'thumbnail': Icons.image, 'title': 'Image 1'},
           {
             'id': 2,
             'type': 'text',
             'thumbnail': Icons.text_fields,
             'title': 'Welcome Post',
-            'text':
-                'Welcome to PrivGuard! This is your first encrypted text post. All your text posts are securely encrypted and stored locally.'
+            'text': 'Welcome to PrivGuard! This is your first encrypted text post.'
           },
-          {
-            'id': 3,
-            'type': 'image',
-            'thumbnail': Icons.image,
-            'title': 'Image 2'
-          },
-          {
-            'id': 4,
-            'type': 'video',
-            'thumbnail': Icons.videocam,
-            'title': 'Video 1'
-          },
+          {'id': 3, 'type': 'image', 'thumbnail': Icons.image, 'title': 'Image 2'},
+          {'id': 4, 'type': 'video', 'thumbnail': Icons.videocam, 'title': 'Video 1'},
           {
             'id': 5,
             'type': 'text',
             'thumbnail': Icons.text_fields,
             'title': 'Security Info',
-            'text':
-                'Your privacy is protected! All text posts and images are encrypted using AES-256 encryption before being stored on your device.'
-          },
-          {
-            'id': 6,
-            'type': 'image',
-            'thumbnail': Icons.image,
-            'title': 'Image 3'
-          },
-          {
-            'id': 7,
-            'type': 'video',
-            'thumbnail': Icons.videocam,
-            'title': 'Video 2'
+            'text': 'All text posts and images are encrypted using AES-256 encryption.'
           },
         ];
 
         _mediaItems.addAll(defaultItems);
-
-        // Save the default text posts
         await _saveEncryptedTextPosts();
-
-        // Create flag file
         await flagFile.writeAsString('completed');
-
-        print('Default items added and saved');
       }
     } catch (e) {
       print('Error adding default items: $e');
@@ -166,34 +139,21 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
       if (await textFile.exists()) {
         final encryptedBytes = await textFile.readAsBytes();
-
-        if (encryptedBytes.isNotEmpty && _aesKey != null) {
-          final decryptedJson = await _decryptData(encryptedBytes);
-
-          if (decryptedJson.isNotEmpty) {
-            final List<dynamic> textPosts = json.decode(decryptedJson);
-
-            for (var post in textPosts) {
-              if (post is Map<String, dynamic>) {
-                _mediaItems.add({
-                  'id': post['id'] ?? DateTime.now().millisecondsSinceEpoch,
-                  'type': 'text',
-                  'thumbnail': Icons.text_fields,
-                  'title': post['title'] ?? 'Untitled',
-                  'text': post['text'] ?? '',
-                });
-              }
-            }
-
-            print('Loaded ${textPosts.length} encrypted text posts');
-          }
+        final decryptedJson = await _decryptData(encryptedBytes);
+        final List<dynamic> textPosts = json.decode(decryptedJson);
+        
+        for (var post in textPosts) {
+          _mediaItems.add({
+            'id': post['id'],
+            'type': 'text',
+            'thumbnail': Icons.text_fields,
+            'title': post['title'],
+            'text': post['text'],
+          });
         }
-      } else {
-        print('No encrypted text posts file found');
       }
     } catch (e) {
       print('Error loading encrypted text posts: $e');
-      // Don't throw here, just log the error as this is called during initialization
     }
   }
 
@@ -201,11 +161,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final files = Directory(dir.path).listSync();
-
+      
       for (var file in files) {
         if (file.path.endsWith('.enc') && !file.path.contains('text_posts')) {
           final fileName = file.path.split('/').last.replaceFirst('.enc', '');
-
           _mediaItems.add({
             'id': DateTime.now().millisecondsSinceEpoch + _mediaItems.length,
             'type': 'image',
@@ -216,8 +175,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
           });
         }
       }
-
-      print('Loaded encrypted images');
     } catch (e) {
       print('Error loading encrypted images: $e');
     }
@@ -225,97 +182,50 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   Future<void> _saveEncryptedTextPosts() async {
     try {
-      if (_aesKey == null) {
-        print('Encryption key not available');
-        return;
-      }
-
+      if (_aesKey == null) return;
+      
       final dir = await getApplicationDocumentsDirectory();
       final textFile = File('${dir.path}/$_textPostsFileName');
-
-      // Get all text posts
+      
       final textPosts = _mediaItems
           .where((item) => item['type'] == 'text')
           .map((item) => {
                 'id': item['id'],
-                'title': item['title'] ?? '',
-                'text': item['text'] ?? '',
+                'title': item['title'],
+                'text': item['text'],
               })
           .toList();
-
+      
       if (textPosts.isNotEmpty) {
         final jsonString = json.encode(textPosts);
         final encryptedBytes = await _encryptData(jsonString);
-
-        // Ensure directory exists
-        await dir.create(recursive: true);
-
         await textFile.writeAsBytes(encryptedBytes);
-        print(
-            'Saved ${textPosts.length} encrypted text posts to: ${textFile.path}');
-
-        // Verify the file was created
-        if (await textFile.exists()) {
-          final fileSize = await textFile.length();
-          print('Text posts file size: $fileSize bytes');
-        }
-      } else {
-        // Delete the file if no text posts exist
-        if (await textFile.exists()) {
-          await textFile.delete();
-          print('Deleted empty text posts file');
-        }
       }
     } catch (e) {
       print('Error saving encrypted text posts: $e');
-      // Re-throw the error so it can be caught by the calling method
-      throw Exception('Failed to save text posts: $e');
     }
   }
 
   Future<Uint8List> _encryptData(String data) async {
-    if (_aesKey == null) {
-      throw Exception('Encryption key not initialized');
-    }
-
-    if (data.isEmpty) {
-      throw Exception('Cannot encrypt empty data');
-    }
-
-    try {
-      final iv = encrypt.IV.fromSecureRandom(16);
-      final encrypter =
-          encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
-      final encrypted = encrypter.encrypt(data, iv: iv);
-
-      // Combine IV + encrypted data
-      final combined = Uint8List.fromList([...iv.bytes, ...encrypted.bytes]);
-      return combined;
-    } catch (e) {
-      print('Encryption error: $e');
-      throw Exception('Failed to encrypt data: $e');
-    }
+    if (_aesKey == null) throw Exception('Encryption key not initialized');
+    final iv = encrypt.IV.fromSecureRandom(16);
+    final encrypter = encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
+    final encrypted = encrypter.encrypt(data, iv: iv);
+    return Uint8List.fromList([...iv.bytes, ...encrypted.bytes]);
   }
 
   Future<String> _decryptData(Uint8List encryptedData) async {
     if (_aesKey == null) throw Exception('Encryption key not initialized');
-
     final iv = encrypt.IV(encryptedData.sublist(0, 16));
     final encryptedContent = encryptedData.sublist(16);
-
-    final encrypter =
-        encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
-    final decrypted =
-        encrypter.decrypt(encrypt.Encrypted(encryptedContent), iv: iv);
-    return decrypted;
+    final encrypter = encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
+    return encrypter.decrypt(encrypt.Encrypted(encryptedContent), iv: iv);
   }
 
-  Future<String> _saveEncryptedImage(
-      Uint8List imageBytes, String fileName) async {
+  Future<String> _saveEncryptedImage(Uint8List imageBytes, String fileName) async {
     if (_aesKey == null) throw Exception('Encryption key not initialized');
     final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypter =
-        encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
+    final encrypter = encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
     final encrypted = encrypter.encryptBytes(imageBytes, iv: iv);
     final dir = await getApplicationDocumentsDirectory();
     final filePath = '${dir.path}/$fileName.enc';
@@ -330,55 +240,27 @@ class _GalleryScreenState extends State<GalleryScreen> {
     final bytes = await file.readAsBytes();
     final iv = encrypt.IV(bytes.sublist(0, 16));
     final encryptedData = bytes.sublist(16);
-    final encrypter =
-        encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
-    final decrypted =
-        encrypter.decryptBytes(encrypt.Encrypted(encryptedData), iv: iv);
+    final encrypter = encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
+    final decrypted = encrypter.decryptBytes(encrypt.Encrypted(encryptedData), iv: iv);
     return Uint8List.fromList(decrypted);
   }
 
   void _addTextPost(String text) async {
     if (!mounted || text.isEmpty) return;
+    
+    final newPost = {
+      'id': DateTime.now().millisecondsSinceEpoch,
+      'type': 'text',
+      'thumbnail': Icons.text_fields,
+      'title': text.length > 20 ? text.substring(0, 20) + '...' : text,
+      'text': text,
+    };
 
-    try {
-      final newPost = {
-        'id': DateTime.now().millisecondsSinceEpoch,
-        'type': 'text',
-        'thumbnail': Icons.text_fields,
-        'title': text.length > 20 ? text.substring(0, 20) + '...' : text,
-        'text': text,
-      };
-
-      setState(() {
-        _mediaItems.add(newPost);
-      });
-
-      // Save text posts with error handling
-      await _saveEncryptedTextPosts();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Text post created and encrypted successfully!'),
-            backgroundColor: Colors.green[600],
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-
-      print('Text post added and saved: ${newPost['title']}');
-    } catch (e) {
-      print('Error adding text post: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create text post: ${e.toString()}'),
-            backgroundColor: Colors.red[600],
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    }
+    setState(() {
+      _mediaItems.add(newPost);
+    });
+    
+    await _saveEncryptedTextPosts();
   }
 
   void _deleteItem(Map<String, dynamic> item) {
@@ -397,33 +279,16 @@ class _GalleryScreenState extends State<GalleryScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
-
                 setState(() {
-                  _mediaItems
-                      .removeWhere((element) => element['id'] == item['id']);
+                  _mediaItems.removeWhere((element) => element['id'] == item['id']);
                 });
-
-                // Delete encrypted file if it exists
+                
                 if (item['encryptedPath'] != null) {
-                  try {
-                    await File(item['encryptedPath']).delete();
-                  } catch (e) {
-                    print('Error deleting file: $e');
-                  }
+                  await File(item['encryptedPath']).delete().catchError((_) {});
                 }
-
-                // Save updated text posts if it was a text post
+                
                 if (item['type'] == 'text') {
                   await _saveEncryptedTextPosts();
-                }
-
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${item['title']} deleted'),
-                      backgroundColor: Colors.red[600],
-                    ),
-                  );
                 }
               },
               child: Text('Delete', style: TextStyle(color: Colors.red)),
@@ -442,9 +307,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
       );
       if (pickedFile != null && mounted) {
         final Uint8List imageBytes = await pickedFile.readAsBytes();
-        final String encryptedPath =
-            await _saveEncryptedImage(imageBytes, pickedFile.name);
-
+        final String encryptedPath = await _saveEncryptedImage(imageBytes, pickedFile.name);
+        
         setState(() {
           _mediaItems.add({
             'id': DateTime.now().millisecondsSinceEpoch,
@@ -455,13 +319,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
             'encryptedPath': encryptedPath,
           });
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Image uploaded and encrypted successfully'),
-            backgroundColor: Colors.green[600],
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {
@@ -483,9 +340,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
       );
       if (capturedFile != null && mounted) {
         final Uint8List imageBytes = await capturedFile.readAsBytes();
-        final String encryptedPath =
-            await _saveEncryptedImage(imageBytes, capturedFile.name);
-
+        final String encryptedPath = await _saveEncryptedImage(imageBytes, capturedFile.name);
+        
         setState(() {
           _mediaItems.add({
             'id': DateTime.now().millisecondsSinceEpoch,
@@ -496,13 +352,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
             'encryptedPath': encryptedPath,
           });
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Image captured and encrypted successfully'),
-            backgroundColor: Colors.green[600],
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {
@@ -537,14 +386,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.indigo[50],
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(16)),
+                    color: Color(0xFFE0F2FE),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                   ),
                   child: Row(
                     children: [
-                      Icon(item['thumbnail'] ?? Icons.help,
-                          color: Colors.indigo[600]),
+                      Icon(item['thumbnail'] ?? Icons.help, color: Color(0xFF0C7FF2)),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -552,7 +399,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: Colors.indigo[800],
+                            color: Color(0xFF0C7FF2),
                           ),
                         ),
                       ),
@@ -572,9 +419,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius:
-                        BorderRadius.vertical(bottom: Radius.circular(16)),
+                    color: Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -585,15 +431,14 @@ class _GalleryScreenState extends State<GalleryScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  ScanAnalysisScreen(mediaItem: item),
+                              builder: (context) => ScanAnalysisScreen(mediaItem: item),
                             ),
                           );
                         },
                         icon: Icon(Icons.scanner, size: 18),
                         label: Text('Scan'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigo[600],
+                          backgroundColor: Color(0xFF0C7FF2),
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -605,7 +450,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                         icon: Icon(Icons.more_horiz, size: 18),
                         label: Text('Options'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.indigo[600],
+                          foregroundColor: Color(0xFF0C7FF2),
                         ),
                       ),
                     ],
@@ -631,29 +476,29 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(color: Color(0xFFE2E8F0)),
                   ),
                   child: Text(
                     item['text'] ?? 'No content available',
                     style: TextStyle(
                       fontSize: 16,
                       height: 1.5,
-                      color: Colors.grey[800],
+                      color: Color(0xFF334155),
                     ),
                   ),
                 ),
                 SizedBox(height: 16),
                 Row(
                   children: [
-                    Icon(Icons.lock, size: 16, color: Colors.green[500]),
+                    Icon(Icons.lock, size: 16, color: Color(0xFF10B981)),
                     SizedBox(width: 8),
                     Text(
                       'Encrypted and stored securely',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.green[500],
+                        color: Color(0xFF10B981),
                       ),
                     ),
                   ],
@@ -679,13 +524,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
               SizedBox(height: 16),
               Row(
                 children: [
-                  Icon(Icons.image, size: 16, color: Colors.grey[500]),
+                  Icon(Icons.image, size: 16, color: Color(0xFF64748B)),
                   SizedBox(width: 8),
                   Text(
                     'Image • ${item['fileName'] ?? 'Unknown file'}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: Color(0xFF64748B),
                     ),
                   ),
                 ],
@@ -701,7 +546,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
               Container(
                 height: 300,
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: Color(0xFFE2E8F0),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
@@ -711,7 +556,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       Icon(
                         Icons.play_circle_outline,
                         size: 64,
-                        color: Colors.indigo[600],
+                        color: Color(0xFF0C7FF2),
                       ),
                       SizedBox(height: 16),
                       Text(
@@ -719,7 +564,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w500,
-                          color: Colors.grey[700],
+                          color: Color(0xFF334155),
                         ),
                       ),
                       SizedBox(height: 8),
@@ -727,7 +572,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                         'Tap to play (video player not implemented)',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[500],
+                          color: Color(0xFF64748B),
                         ),
                       ),
                     ],
@@ -737,13 +582,13 @@ class _GalleryScreenState extends State<GalleryScreen> {
               SizedBox(height: 16),
               Row(
                 children: [
-                  Icon(Icons.videocam, size: 16, color: Colors.grey[500]),
+                  Icon(Icons.videocam, size: 16, color: Color(0xFF64748B)),
                   SizedBox(width: 8),
                   Text(
                     'Video • Duration: 1:23',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: Color(0xFF64748B),
                     ),
                   ),
                 ],
@@ -756,7 +601,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
           child: Center(
             child: Text(
               'Content type not supported',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Color(0xFF64748B)),
             ),
           ),
         );
@@ -781,7 +626,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 height: 4,
                 margin: EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: Color(0xFFE2E8F0),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -791,8 +636,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(item['thumbnail'] ?? Icons.help,
-                            color: Colors.indigo[600]),
+                        Icon(item['thumbnail'] ?? Icons.help, color: Color(0xFF0C7FF2)),
                         SizedBox(width: 12),
                         Text(
                           item['title'] ?? 'Unknown',
@@ -805,7 +649,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     ),
                     SizedBox(height: 20),
                     ListTile(
-                      leading: Icon(Icons.scanner, color: Colors.indigo[600]),
+                      leading: Icon(Icons.scanner, color: Color(0xFF0C7FF2)),
                       title: Text('Scan for Privacy Risks'),
                       subtitle: Text('Analyze this item before posting'),
                       onTap: () {
@@ -813,8 +657,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                ScanAnalysisScreen(mediaItem: item),
+                            builder: (context) => ScanAnalysisScreen(mediaItem: item),
                           ),
                         );
                       },
@@ -839,91 +682,17 @@ class _GalleryScreenState extends State<GalleryScreen> {
     );
   }
 
-  void _showAddOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Add Content',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.indigo[100],
-                        child: Icon(Icons.add_photo_alternate,
-                            color: Colors.indigo[600]),
-                      ),
-                      title: Text('Upload Media'),
-                      subtitle: Text('Choose photos or videos from gallery'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _pickImageFromGallery();
-                      },
-                    ),
-                    ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.green[100],
-                        child: Icon(Icons.camera_alt, color: Colors.green[600]),
-                      ),
-                      title: Text('Capture Image'),
-                      subtitle: Text('Take a photo with camera'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _captureImageFromCamera();
-                      },
-                    ),
-                    ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.orange[100],
-                        child:
-                            Icon(Icons.text_fields, color: Colors.orange[600]),
-                      ),
-                      title: Text('Create Text Post'),
-                      subtitle: Text('Write a text-based post'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showCreateTextPostDialog();
-                      },
-                    ),
-                    SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  void _toggleAddOptions() {
+    setState(() {
+      _showAddOptions = !_showAddOptions;
+    });
+    if (_showAddOptions) {
+      _fabAnimationController.forward();
+    } else {
+      _fabAnimationController.reverse();
+    }
   }
 
-  // Replace the _showCreateTextPostDialog method with this fixed version
   void _showCreateTextPostDialog() {
     final TextEditingController textController = TextEditingController();
     bool isDisposed = false;
@@ -933,7 +702,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text("Create Text Post"),
+          title: Text("Create Text Post"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -941,7 +710,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 controller: textController,
                 maxLines: 3,
                 maxLength: 1000,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: "What's on your mind?",
                   border: OutlineInputBorder(),
                   counterText: '',
@@ -953,7 +722,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
-                // Dispose after navigation is complete
                 if (!isDisposed) {
                   Future.delayed(Duration(milliseconds: 100), () {
                     textController.dispose();
@@ -961,7 +729,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   });
                 }
               },
-              child: const Text("Cancel"),
+              child: Text("Cancel"),
             ),
             ElevatedButton(
               onPressed: () {
@@ -976,11 +744,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   return;
                 }
 
-                // Store the text before disposing
                 final textToPost = text;
                 Navigator.of(dialogContext).pop();
 
-                // Dispose after navigation is complete and call _addTextPost
                 if (!isDisposed) {
                   Future.delayed(Duration(milliseconds: 100), () {
                     textController.dispose();
@@ -989,13 +755,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   });
                 }
               },
-              child: const Text("Post"),
+              child: Text("Post"),
             ),
           ],
         );
       },
     ).then((_) {
-      // Ensure disposal happens if dialog is dismissed in other ways
       if (!isDisposed) {
         Future.delayed(Duration(milliseconds: 100), () {
           textController.dispose();
@@ -1005,16 +770,14 @@ class _GalleryScreenState extends State<GalleryScreen> {
     });
   }
 
-  Widget _buildImageWidget(Map<String, dynamic> item,
-      {bool isFullView = false}) {
+  Widget _buildImageWidget(Map<String, dynamic> item, {bool isFullView = false}) {
     if (item['encryptedPath'] != null) {
       return FutureBuilder<Uint8List>(
         future: _loadAndDecryptImage(item['encryptedPath']),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done &&
-              snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
             return ClipRRect(
-              borderRadius: BorderRadius.circular(isFullView ? 12 : 8),
+              borderRadius: BorderRadius.circular(isFullView ? 12 : 12),
               child: Image.memory(
                 snapshot.data!,
                 fit: BoxFit.cover,
@@ -1041,7 +804,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
         child: Icon(
           item['thumbnail'] ?? Icons.help,
           size: isFullView ? 64 : 32,
-          color: Colors.indigo[400],
+          color: Color(0xFF0C7FF2),
         ),
       );
     }
@@ -1055,9 +818,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.text_fields, size: 14, color: Colors.indigo[400]),
+              Icon(Icons.text_fields, size: 14, color: Color(0xFF0C7FF2)),
               SizedBox(width: 4),
-              Icon(Icons.lock, size: 12, color: Colors.green[400]),
+              Icon(Icons.lock, size: 12, color: Color(0xFF10B981)),
             ],
           ),
           SizedBox(height: 4),
@@ -1065,8 +828,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
             child: Text(
               item['text'] ?? 'No content',
               style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey[700],
+                fontSize: 14, // Changed from 10 to 14 for better readability
+                color: Color(0xFF334155),
                 height: 1.2,
               ),
               maxLines: 4,
@@ -1082,17 +845,39 @@ class _GalleryScreenState extends State<GalleryScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
+        backgroundColor: Color(0xFFF3F4F6),
         appBar: AppBar(
-          title: Text(
-            'PrivGuard Gallery',
-            style: TextStyle(fontWeight: FontWeight.w600),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: Colors.black26,
+          leading: IconButton(
+            icon: Icon(Icons.close, color: Color(0xFF334155)),
+            onPressed: () => Navigator.pop(context),
           ),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.shield, color: Color(0xFF0C7FF2), size: 24),
+              SizedBox(width: 8),
+              Text(
+                'PrivGuard',
+                style: TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          centerTitle: true,
+          actions: [SizedBox(width: 48)],
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
+              CircularProgressIndicator(color: Color(0xFF0C7FF2)),
               SizedBox(height: 16),
               Text('Loading encrypted data...'),
             ],
@@ -1102,133 +887,349 @@ class _GalleryScreenState extends State<GalleryScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Color(0xFFF3F4F6),
       appBar: AppBar(
-        title: Text(
-          'PrivGuard Gallery',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        shadowColor: Colors.black26,
+        leading: IconButton(
+          icon: Icon(Icons.close, color: Color(0xFF334155)),
+          onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.notifications_outlined),
-            onPressed: () {
-              // Notifications functionality
-            },
-          ),
-        ],
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.shield, color: Color(0xFF0C7FF2), size: 24),
+            SizedBox(width: 8),
+            Text(
+              'PrivGuard',
+              style: TextStyle(
+                color: Color(0xFF334155),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
+        actions: [SizedBox(width: 48)],
       ),
       body: Column(
         children: [
           Expanded(
-            child: _mediaItems.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.photo_library_outlined,
-                          size: 80,
-                          color: Colors.grey[400],
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No media yet',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Add or capture media to get started',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : Padding(
-                    padding: EdgeInsets.all(16),
-                    child: GridView.builder(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 4,
-                        mainAxisSpacing: 4,
-                        childAspectRatio: 1.0,
-                      ),
-                      itemCount: _mediaItems.length,
-                      itemBuilder: (context, index) {
-                        final item = _mediaItems[index];
-                        return GestureDetector(
-                          onTap: () => _showFullContent(item),
-                          onLongPress: () => _onLongPress(item),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[300]!),
-                            ),
-                            child: Stack(
-                              children: [
-                                if (item['type'] == 'image')
-                                  _buildImageWidget(item)
-                                else if (item['type'] == 'text')
-                                  _buildTextContentWidget(item)
-                                else
-                                  Center(
-                                    child: Icon(
-                                      item['thumbnail'] ?? Icons.help,
-                                      size: 32,
-                                      color: Colors.indigo[400],
-                                    ),
-                                  ),
-                                if (item['type'] == 'video')
-                                  Positioned(
-                                    bottom: 4,
-                                    right: 4,
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 4, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black54,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        '1:23',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Gallery',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF334155),
                     ),
                   ),
-          ),
-          Container(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              '© 2024 PrivGuard - Your Privacy Guardian',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 12,
+                  SizedBox(height: 16),
+                  Expanded(
+                    child: _mediaItems.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.photo_library_outlined,
+                                  size: 80,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No media yet',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Add or capture media to get started',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : GridView.builder(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: 1.0,
+                            ),
+                            itemCount: _mediaItems.length,
+                            itemBuilder: (context, index) {
+                              final item = _mediaItems[index];
+                              return GestureDetector(
+                                onTap: () => _showFullContent(item),
+                                onLongPress: () => _onLongPress(item),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Stack(
+                                      children: [
+                                        if (item['type'] == 'image')
+                                          _buildImageWidget(item)
+                                        else if (item['type'] == 'text')
+                                          Container(
+                                            color: Colors.white,
+                                            child: _buildTextContentWidget(item),
+                                          )
+                                        else
+                                          Container(
+                                            color: Colors.white,
+                                            child: Center(
+                                              child: Icon(
+                                                item['thumbnail'] ?? Icons.help,
+                                                size: 32,
+                                                color: Color(0xFF0C7FF2),
+                                              ),
+                                            ),
+                                          ),
+                                        if (item['type'] == 'video')
+                                          Positioned(
+                                            bottom: 4,
+                                            right: 4,
+                                            child: Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black54,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                '1:23',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddOptions,
-        backgroundColor: Colors.indigo[600],
-        child: Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Stack(
+        children: [
+          if (_showAddOptions) ...[
+            Positioned(
+              bottom: 160,
+              right: 0,
+              child: AnimatedBuilder(
+                animation: _fabAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _fabAnimation.value,
+                    child: Opacity(
+                      opacity: _fabAnimation.value,
+                      child: Container(
+                        margin: EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                'Upload',
+                                style: TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            FloatingActionButton(
+                              mini: true,
+                              backgroundColor: Colors.white,
+                              onPressed: () {
+                                _toggleAddOptions();
+                                _pickImageFromGallery();
+                              },
+                              child: Icon(Icons.upload_file, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Positioned(
+              bottom: 110,
+              right: 0,
+              child: AnimatedBuilder(
+                animation: _fabAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _fabAnimation.value,
+                    child: Opacity(
+                      opacity: _fabAnimation.value,
+                      child: Container(
+                        margin: EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                'Capture',
+                                style: TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            FloatingActionButton(
+                              mini: true,
+                              backgroundColor: Colors.white,
+                              onPressed: () {
+                                _toggleAddOptions();
+                                _captureImageFromCamera();
+                              },
+                              child: Icon(Icons.photo_camera, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Positioned(
+              bottom: 60,
+              right: 0,
+              child: AnimatedBuilder(
+                animation: _fabAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _fabAnimation.value,
+                    child: Opacity(
+                      opacity: _fabAnimation.value,
+                      child: Container(
+                        margin: EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                'Text Post',
+                                style: TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            FloatingActionButton(
+                              mini: true,
+                              backgroundColor: Colors.white,
+                              onPressed: () {
+                                _toggleAddOptions();
+                                _showCreateTextPostDialog();
+                              },
+                              child: Icon(Icons.edit_note, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: FloatingActionButton(
+              backgroundColor: Color(0xFF0C7FF2),
+              onPressed: _toggleAddOptions,
+              child: AnimatedBuilder(
+                animation: _fabAnimation,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _fabAnimation.value * 0.785398, // 45 degrees in radians
+                    child: Icon(
+                      Icons.add,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

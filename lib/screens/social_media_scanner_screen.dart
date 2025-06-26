@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 class SocialMediaScannerScreen extends StatefulWidget {
   @override
-  _SocialMediaScannerScreenState createState() =>
-      _SocialMediaScannerScreenState();
+  _SocialMediaScannerScreenState createState() => _SocialMediaScannerScreenState();
 }
 
 class _SocialMediaScannerScreenState extends State<SocialMediaScannerScreen> {
@@ -29,12 +28,9 @@ class _SocialMediaScannerScreenState extends State<SocialMediaScannerScreen> {
       );
       return;
     }
-
-    // Start scanning functionality
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content:
-            Text('Privacy report will be sent to ${_emailController.text}'),
+        content: Text('Privacy report will be sent to ${_emailController.text}'),
         backgroundColor: Colors.green[600],
       ),
     );
@@ -42,233 +38,265 @@ class _SocialMediaScannerScreenState extends State<SocialMediaScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Color(0xFF0C7FF2);
+    final slate100 = Color(0xFFF1F5F9);
+    final slate200 = Color(0xFFE2E8F0);
+    final slate300 = Color(0xFFCBD5E1);
+    final slate400 = Color(0xFF94A3B8);
+    final slate500 = Color(0xFF64748B);
+    final slate600 = Color(0xFF475569);
+    final slate700 = Color(0xFF334155);
+    final slate800 = Color(0xFF1E293B);
+    final slate900 = Color(0xFF0F172A);
+
     return Scaffold(
+      backgroundColor: slate100,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new, color: slate700),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
           'Social Media Scanner',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.help_outline),
-            onPressed: () {
-              // Help functionality
-            },
+          style: TextStyle(
+            color: slate900,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
           ),
-        ],
+        ),
+        centerTitle: true,
       ),
       body: Column(
         children: [
+          // Wrap the main content in Expanded and SingleChildScrollView
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header Info
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.security,
-                            size: 48,
-                            color: Colors.indigo[600],
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.security,
+                          size: 48,
+                          color: primaryColor,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Get Your Detailed Privacy Report',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: slate900,
                           ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Privacy Report Scanner',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Enter your social media handle and email to receive insights into your online privacy.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: slate600,
                           ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Enter your social media handle and email to receive a comprehensive privacy analysis report.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
-
-                  SizedBox(height: 24),
-
-                  // Input Form
+                  SizedBox(height: 32),
                   Text(
                     'Account Details',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
+                      color: slate900,
                     ),
                   ),
                   SizedBox(height: 16),
-
-                  TextField(
-                    controller: _handleController,
-                    decoration: InputDecoration(
-                      labelText: 'Social Media Handle',
-                      hintText: '@username',
-                      prefixIcon: Icon(Icons.alternate_email),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.indigo[600]!),
-                      ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: slate300),
+                    ),
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Icon(Icons.alternate_email, color: slate400),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: _handleController,
+                            decoration: InputDecoration(
+                              hintText: '@username',
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(vertical: 16),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-
                   SizedBox(height: 16),
-
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Email Address',
-                      hintText: 'your.email@example.com',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.indigo[600]!),
-                      ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: slate300),
+                    ),
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Icon(Icons.email_outlined, color: slate400),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: InputDecoration(
+                              hintText: 'you@example.com',
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(vertical: 16),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-
-                  SizedBox(height: 24),
-
-                  // Settings
+                  SizedBox(height: 32),
                   Text(
                     'Scan Settings',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
+                      color: slate900,
                     ),
                   ),
                   SizedBox(height: 16),
-
-                  Card(
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        SwitchListTile(
-                          title: Text('Auto-scan every 30 days'),
-                          subtitle:
-                              Text('Automatically rescan your profile monthly'),
-                          value: _autoScanEnabled,
-                          onChanged: (value) {
-                            setState(() {
-                              _autoScanEnabled = value;
-                            });
-                          },
-                          activeColor: Colors.indigo[600],
-                        ),
-                        Divider(height: 1),
-                        SwitchListTile(
-                          title: Text('Push notifications'),
-                          subtitle:
-                              Text('Get notified when risk status changes'),
-                          value: _pushNotificationsEnabled,
-                          onChanged: (value) {
-                            setState(() {
-                              _pushNotificationsEnabled = value;
-                            });
-                          },
-                          activeColor: Colors.indigo[600],
+                      border: Border.all(color: slate200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
                       ],
                     ),
-                  ),
-
-                  SizedBox(height: 24),
-
-                  // Previous Scans
-                  Text(
-                    'Recent Scans',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-
-                  Card(
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                     child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.green[100],
-                        child: Icon(
-                          Icons.check,
-                          color: Colors.green[600],
+                      title: Text(
+                        'Automatic Scans',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: slate800,
                         ),
                       ),
-                      title: Text('Last scan completed'),
-                      subtitle: Text('No previous scans found'),
-                      trailing: Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () {
-                        // View previous scan details
-                      },
+                      subtitle: Text(
+                        'Scan your account every 30 days',
+                        style: TextStyle(
+                          color: slate500,
+                        ),
+                      ),
+                      trailing: Switch(
+                        value: _autoScanEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            _autoScanEnabled = value;
+                          });
+                        },
+                        activeColor: primaryColor,
+                      ),
                     ),
                   ),
+                  SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: slate200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ListTile(
+                      title: Text(
+                        'Push Notifications',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: slate800,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Get notified of risk status changes',
+                        style: TextStyle(
+                          color: slate500,
+                        ),
+                      ),
+                      trailing: Switch(
+                        value: _pushNotificationsEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            _pushNotificationsEnabled = value;
+                          });
+                        },
+                        activeColor: primaryColor,
+                      ),
+                    ),
+                  ),
+                  // Add some bottom padding to ensure content doesn't get cut off
+                  SizedBox(height: 24),
                 ],
               ),
             ),
           ),
-
-          // Footer with Scan Button
+          // Keep the button at the bottom
           Container(
             padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                ElevatedButton(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              border: Border(
+                top: BorderSide(
+                  color: slate200,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
                   onPressed: _startScan,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo[600],
+                    backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     elevation: 2,
-                    minimumSize: Size(double.infinity, 50),
                   ),
                   child: Text(
-                    'Start Privacy Scan',
+                    'Get Report',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                SizedBox(height: 8),
-                Text(
-                  '© 2024 PrivGuard - Your Privacy Guardian',
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],

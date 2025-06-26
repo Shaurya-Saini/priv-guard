@@ -18,45 +18,51 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 10,
-              offset: Offset(0, -2),
+      body: Column(
+        children: [
+          Expanded(
+            child: _screens[_currentIndex],
+          ),
+          // Footer section
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+              ),
             ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.transparent,
-          selectedItemColor: Colors.indigo[600],
-          unselectedItemColor: Colors.grey[500],
-          selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
-          elevation: 0,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.photo_library_outlined),
-              activeIcon: Icon(Icons.photo_library),
-              label: 'Gallery',
+            child: Text(
+              '© 2024 PrivGuard - Your Privacy Guardian',
+              style: TextStyle(
+                fontSize: 10,
+                color: Color(0xFF94A3B8),
+              ),
+              textAlign: TextAlign.center,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.security_outlined),
-              activeIcon: Icon(Icons.security),
-              label: 'Scanner',
-            ),
-          ],
-        ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.photo_library),
+            label: 'Gallery',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.gpp_maybe),
+            label: 'Scan Socials',
+          ),
+        ],
+        selectedItemColor: Color(0xFF0C7FF2),
+        backgroundColor: Colors.white,
+        elevation: 8,
       ),
     );
   }

@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
-
-enum MediaType {
-  image,
-  text,
-  video,
-}
+import 'dart:ui';
 
 class ScanAnalysisScreen extends StatefulWidget {
   final Map<String, dynamic> mediaItem;
 
-  const ScanAnalysisScreen({Key? key, required this.mediaItem})
-      : super(key: key);
+  const ScanAnalysisScreen({Key? key, required this.mediaItem}) : super(key: key);
 
   @override
   _ScanAnalysisScreenState createState() => _ScanAnalysisScreenState();
@@ -19,520 +13,593 @@ class ScanAnalysisScreen extends StatefulWidget {
 class _ScanAnalysisScreenState extends State<ScanAnalysisScreen> {
   bool _isScanning = false;
   Map<String, dynamic>? _analysisResult;
-  MediaType? _mediaType;
+  bool _showRisksTab = true;
 
   @override
   void initState() {
     super.initState();
-    _determineMediaType();
     _startAnalysis();
   }
 
-  void _determineMediaType() {
-    // Determine media type based on mediaItem properties
-    if (widget.mediaItem.containsKey('type')) {
-      switch (widget.mediaItem['type'].toString().toLowerCase()) {
-        case 'image':
-        case 'photo':
-          _mediaType = MediaType.image;
-          break;
-        case 'text':
-        case 'post':
-          _mediaType = MediaType.text;
-          break;
-        case 'video':
-          _mediaType = MediaType.video;
-          break;
-        default:
-          _mediaType = MediaType.text; // Default fallback
-      }
-    } else {
-      _mediaType = MediaType.text; // Default fallback
-    }
-  }
-
   void _startAnalysis() {
-    setState(() {
-      _isScanning = true;
-    });
-
-    switch (_mediaType) {
-      case MediaType.image:
-        _scanImage();
-        break;
-      case MediaType.text:
-        _scanText();
-        break;
-      case MediaType.video:
-        _handleVideoScanning();
-        break;
-      default:
-        _scanText();
-    }
-  }
-
-  Future<void> _scanImage() async {
-    // TODO: Replace with actual TensorFlow model inference
-    // Example: final result = await _imagePrivacyModel.predict(widget.mediaItem['data']);
-
-    // Simulate image analysis
-    await Future.delayed(Duration(seconds: 4));
-
-    setState(() {
-      _isScanning = false;
-      _analysisResult = {
-        'riskScore': 85,
-        'riskLevel': 'High',
-        'detectedRisks': [
-          'Faces detected in image',
-          'EXIF location data present',
-          'Personal items visible (ID cards, documents)',
-          'Background contains identifiable information',
-        ],
-        'suggestions': [
-          'Blur or crop faces before sharing',
-          'Remove EXIF metadata',
-          'Cover sensitive documents in background',
-          'Check for reflective surfaces showing personal info',
-        ],
-        'technicalDetails': {
-          'facesDetected': 2,
-          'locationAccuracy': 'High precision GPS',
-          'personalItemsCount': 3,
-        }
-      };
-    });
-  }
-
-  Future<void> _scanText() async {
-    // TODO: Replace with actual TensorFlow model inference
-    // Example: final result = await _textPrivacyModel.predict(widget.mediaItem['content']);
-
-    // Simulate text analysis
-    await Future.delayed(Duration(seconds: 2));
-
-    setState(() {
-      _isScanning = false;
-      _analysisResult = {
-        'riskScore': 60,
-        'riskLevel': 'Medium',
-        'detectedRisks': [
-          'Phone number mentioned',
-          'Workplace information shared',
-          'Personal schedule details',
-          'Family member names mentioned',
-        ],
-        'suggestions': [
-          'Remove or redact phone numbers',
-          'Avoid sharing specific workplace details',
-          'Limit sharing of daily routines',
-          'Use initials instead of full names',
-        ],
-        'technicalDetails': {
-          'personalDataPoints': 4,
-          'sensitiveKeywords': ['phone', 'work', 'schedule'],
-          'privacyScore': 6.5,
-        }
-      };
-    });
-  }
-
-  Future<void> _handleVideoScanning() async {
-    // Simulate brief loading for consistency
-    await Future.delayed(Duration(seconds: 1));
-
-    setState(() {
-      _isScanning = false;
-      _analysisResult = {
-        'riskScore': null,
-        'riskLevel': 'Not Supported',
-        'isVideoUnsupported': true,
-        'message': 'Scanning videos will be supported in future versions',
-        'supportedFeatures': [
-          'Audio privacy analysis',
-          'Visual content recognition',
-          'Automatic face blurring',
-          'Location metadata removal',
-        ],
-      };
+    setState(() { _isScanning = true; });
+    // Fake analysis for demo
+    Future.delayed(Duration(seconds: 2), () {
+      final type = widget.mediaItem['type'] ?? 'text';
+      if (type == 'image') {
+        setState(() {
+          _isScanning = false;
+          _analysisResult = {
+            'riskScore': 85,
+            'riskLevel': 'High',
+            'detectedRisks': [
+              'Faces detected in image',
+              'EXIF location data present',
+              'Personal items visible (ID cards, documents)',
+              'Background contains identifiable information',
+            ],
+            'suggestions': [
+              'Blur or crop faces before sharing',
+              'Remove EXIF metadata',
+              'Cover sensitive documents in background',
+              'Check for reflective surfaces showing personal info',
+            ],
+            'technicalDetails': {
+              'facesDetected': 2,
+              'locationAccuracy': 'High precision GPS',
+              'personalItemsCount': 3,
+            }
+          };
+        });
+      } else if (type == 'video') {
+        setState(() {
+          _isScanning = false;
+          _analysisResult = {
+            'riskScore': null,
+            'riskLevel': 'Not Supported',
+            'isVideoUnsupported': true,
+            'message': 'Scanning videos will be supported in future versions',
+            'supportedFeatures': [
+              'Audio privacy analysis',
+              'Visual content recognition',
+              'Automatic face blurring',
+              'Location metadata removal',
+            ],
+          };
+        });
+      } else {
+        setState(() {
+          _isScanning = false;
+          _analysisResult = {
+            'riskScore': 60,
+            'riskLevel': 'Medium',
+            'detectedRisks': [
+              'Phone number mentioned',
+              'Workplace information shared',
+              'Personal schedule details',
+              'Family member names mentioned',
+            ],
+            'suggestions': [
+              'Remove or redact phone numbers',
+              'Avoid sharing specific workplace details',
+              'Limit sharing of daily routines',
+              'Use initials instead of full names',
+            ],
+            'technicalDetails': {
+              'personalDataPoints': 4,
+              'sensitiveKeywords': ['phone', 'work', 'schedule'],
+              'privacyScore': 6.5,
+            }
+          };
+        });
+      }
     });
   }
 
   Color _getRiskColor(int? score) {
-    if (score == null) return Colors.grey;
-    if (score >= 80) return Colors.red;
-    if (score >= 50) return Colors.orange;
-    return Colors.green;
+    if (score == null) return Color(0xFF94A3B8);
+    if (score >= 80) return Color(0xFFEF4444);
+    if (score >= 50) return Color(0xFFF59E0B);
+    return Color(0xFF10B981);
   }
 
   IconData _getMediaIcon() {
-    switch (_mediaType) {
-      case MediaType.image:
-        return Icons.image;
-      case MediaType.text:
-        return Icons.text_fields;
-      case MediaType.video:
-        return Icons.videocam;
-      default:
-        return Icons.description;
-    }
-  }
-
-  String _getAnalysisTitle() {
-    switch (_mediaType) {
-      case MediaType.image:
-        return 'Image Privacy Analysis';
-      case MediaType.text:
-        return 'Text Privacy Analysis';
-      case MediaType.video:
-        return 'Video Privacy Analysis';
-      default:
-        return 'Privacy Analysis';
-    }
-  }
-
-  Widget _buildRiskScoreCard() {
-    if (_analysisResult?['isVideoUnsupported'] == true) {
-      return Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Icon(
-                Icons.video_library_outlined,
-                size: 64,
-                color: Colors.grey[600],
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Video Analysis',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                _analysisResult!['message'],
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Text(
-              'Privacy Risk Score',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 16),
-            CircularProgressIndicator(
-              value: _analysisResult!['riskScore'] / 100,
-              strokeWidth: 8,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(
-                _getRiskColor(_analysisResult!['riskScore']),
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              '${_analysisResult!['riskScore']}/100',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: _getRiskColor(_analysisResult!['riskScore']),
-              ),
-            ),
-            Text(
-              '${_analysisResult!['riskLevel']} Risk',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoUnsupportedContent() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildRiskScoreCard(),
-          SizedBox(height: 20),
-          Text(
-            'Coming Soon',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 12),
-          ...(_analysisResult!['supportedFeatures'] as List).map(
-            (feature) => Card(
-              margin: EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Icon(
-                  Icons.schedule,
-                  color: Colors.blue[600],
-                ),
-                title: Text(feature),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnalysisResults() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildRiskScoreCard(),
-          SizedBox(height: 20),
-
-          // Detected Risks
-          Text(
-            'Detected Risks',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 12),
-          ...(_analysisResult!['detectedRisks'] as List).map(
-            (risk) => Card(
-              margin: EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Icon(
-                  Icons.warning_amber,
-                  color: Colors.orange[600],
-                ),
-                title: Text(risk),
-              ),
-            ),
-          ),
-
-          SizedBox(height: 20),
-
-          // Suggestions
-          Text(
-            'Privacy Suggestions',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 12),
-          ...(_analysisResult!['suggestions'] as List).map(
-            (suggestion) => Card(
-              margin: EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Icon(
-                  Icons.lightbulb_outline,
-                  color: Colors.blue[600],
-                ),
-                title: Text(suggestion),
-              ),
-            ),
-          ),
-
-          // Technical Details (optional expansion)
-          if (_analysisResult!['technicalDetails'] != null) ...[
-            SizedBox(height: 20),
-            ExpansionTile(
-              title: Text(
-                'Technical Details',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              children: [
-                ..._analysisResult!['technicalDetails'].entries.map(
-                      (entry) => ListTile(
-                        title: Text(entry.key),
-                        trailing: Text(entry.value.toString()),
-                      ),
-                    ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
+    final type = widget.mediaItem['type'];
+    if (type == 'image') return Icons.image;
+    if (type == 'video') return Icons.videocam;
+    return Icons.text_fields;
   }
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Color(0xFF0C7FF2);
+    final slate200 = Color(0xFFE2E8F0);
+    final slate400 = Color(0xFF94A3B8);
+    final slate500 = Color(0xFF64748B);
+    final slate600 = Color(0xFF475569);
+    final slate700 = Color(0xFF334155);
+    final slate800 = Color(0xFF1E293B);
+    final slate900 = Color(0xFF0F172A);
+
+    bool isVideoUnsupported = _analysisResult?['isVideoUnsupported'] == true;
+
     return Scaffold(
+      backgroundColor: Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: Text(
-          _getAnalysisTitle(),
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back_ios_new, color: primaryColor),
           onPressed: () => Navigator.pop(context),
         ),
+        title: Text(
+          widget.mediaItem['title'] ?? 'Privacy Analysis',
+          style: TextStyle(
+            color: slate800,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+        centerTitle: true,
       ),
       body: Column(
         children: [
-          // Media Preview
+          // Media Preview Container - COMPLETELY FIXED FOR IMAGE OVERFLOW
           Container(
-            width: double.infinity,
-            height: 200,
             margin: EdgeInsets.all(16),
+            width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.grey[200],
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  _getMediaIcon(),
-                  size: 64,
-                  color: Colors.grey[600],
-                ),
-                SizedBox(height: 8),
-                Text(
-                  widget.mediaItem['title'] ?? 'Media Content',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
-                  ),
-                ),
-                Text(
-                  _mediaType.toString().split('.').last.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
-          ),
-
-          Expanded(
-            child: _isScanning
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.indigo[600]!),
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User info row with FIXED constraints
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: slate200,
+                        child: Icon(_getMediaIcon(), color: slate600),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'User',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: slate800,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '@username',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: slate500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 24),
-                        Text(
-                          'Analyzing privacy risks...',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          _mediaType == MediaType.image
-                              ? 'Processing image content'
-                              : _mediaType == MediaType.text
-                                  ? 'Analyzing text content'
-                                  : 'Checking video compatibility',
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  
+                  // Content text with STRICT constraints - KEY FIX
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Container(
+                        width: constraints.maxWidth, // Use available width
+                        child: Text(
+                          widget.mediaItem['text'] ?? 
+                          widget.mediaItem['title'] ?? 
+                          widget.mediaItem['fileName'] ?? 
+                          'Media content',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey[500],
+                            color: slate700,
                           ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: true,
                         ),
-                      ],
-                    ),
-                  )
-                : _analysisResult != null
-                    ? (_analysisResult!['isVideoUnsupported'] == true
-                        ? _buildVideoUnsupportedContent()
-                        : _buildAnalysisResults())
-                    : Center(
-                        child: Text(
-                          'Analysis failed. Please try again.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
-          ),
-
-          // Footer
-          Container(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                if (_analysisResult != null &&
-                    _analysisResult!['isVideoUnsupported'] != true)
-                  ElevatedButton(
-                    onPressed: () {
-                      // Post with suggestions applied
-                      // TODO: Implement actual privacy suggestions application
+                      );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo[600],
-                      foregroundColor: Colors.white,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      minimumSize: Size(double.infinity, 50),
-                    ),
-                    child: Text(
-                      'Apply Suggestions & Post',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ),
-                SizedBox(height: 8),
+                  
+                  // Image preview with STRICT constraints - CRITICAL FIX
+                  if (widget.mediaItem['type'] == 'image')
+                    Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Container(
+                            width: constraints.maxWidth, // Use exact available width
+                            height: 120, // Fixed height to prevent overflow
+                            decoration: BoxDecoration(
+                              color: slate200,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: widget.mediaItem['encryptedPath'] != null
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.image,
+                                            size: 32,
+                                            color: slate600,
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Encrypted Image',
+                                            style: TextStyle(
+                                              color: slate600,
+                                              fontSize: 10,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Icon(
+                                        Icons.image,
+                                        size: 32,
+                                        color: slate600,
+                                      ),
+                                    ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Risk Score Section with proper constraints
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  '© 2024 PrivGuard - Your Privacy Guardian',
+                  'Risk Score',
                   style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: slate800,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: slate200,
+                      ),
+                      child: Stack(
+                        children: [
+                          CustomPaint(
+                            painter: RiskScorePainter(
+                              value: (_analysisResult?['riskScore'] ?? 0) / 100,
+                              color: _getRiskColor(_analysisResult?['riskScore']),
+                            ),
+                            size: Size(120, 120),
+                          ),
+                          Center(
+                            child: Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${_analysisResult?['riskScore'] ?? '--'}',
+                                      style: TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                        color: _getRiskColor(_analysisResult?['riskScore']),
+                                      ),
+                                    ),
+                                    Text(
+                                      _analysisResult?['riskLevel'] ?? 'Unknown',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: slate500,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Tabs Section
+          Container(
+            color: Colors.white,
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _showRisksTab = true),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: _showRisksTab ? primaryColor : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Detected Risks',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: _showRisksTab ? primaryColor : slate500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _showRisksTab = false),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: !_showRisksTab ? primaryColor : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Suggestions',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: !_showRisksTab ? primaryColor : slate500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Content Section with FIXED overflow constraints
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_showRisksTab)
+                    ..._analysisResult?['detectedRisks']?.map<Widget>((risk) => Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Container(
+                                width: constraints.maxWidth, // Use exact available width
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFFE0F2FE),
+                                        borderRadius: BorderRadius.circular(24),
+                                      ),
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.warning,
+                                          color: primaryColor,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            risk,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 16,
+                                              color: slate800,
+                                            ),
+                                            maxLines: null,
+                                            softWrap: true,
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'Risk identified',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: slate500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        )) ??
+                        [],
+                  if (!_showRisksTab)
+                    ..._analysisResult?['suggestions']?.map<Widget>((suggestion) => Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Container(
+                                width: constraints.maxWidth, // Use exact available width
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: slate200,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.lightbulb_outline,
+                                          color: slate600,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        suggestion,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                          color: slate800,
+                                        ),
+                                        maxLines: null,
+                                        softWrap: true,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        )) ??
+                        [],
+                ],
+              ),
+            ),
+          ),
+          
+          // Bottom Button
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              border: Border(
+                top: BorderSide(
+                  color: slate200,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // TODO: Apply changes
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: Text(
+                    'Apply Changes',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -540,3 +607,34 @@ class _ScanAnalysisScreenState extends State<ScanAnalysisScreen> {
     );
   }
 }
+
+class RiskScorePainter extends CustomPainter {
+  final double value;
+  final Color color;
+
+  RiskScorePainter({required this.value, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 5;
+    final startAngle = -0.5 * 3.14159;
+    final sweepAngle = 2 * 3.14159 * value;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
