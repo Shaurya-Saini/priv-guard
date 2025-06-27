@@ -110,7 +110,7 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
             'type': 'text',
             'thumbnail': Icons.text_fields,
             'title': 'Welcome Post',
-            'text': 'Welcome to PrivGuard! This is your first encrypted text post.'
+            'text': 'Welcome to PrivGuard! Contact us at support@privguard.com or call (555) 123-4567.'
           },
           {'id': 3, 'type': 'image', 'thumbnail': Icons.image, 'title': 'Image 2'},
           {'id': 4, 'type': 'video', 'thumbnail': Icons.videocam, 'title': 'Video 1'},
@@ -118,8 +118,8 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
             'id': 5,
             'type': 'text',
             'thumbnail': Icons.text_fields,
-            'title': 'Security Info',
-            'text': 'All text posts and images are encrypted using AES-256 encryption.'
+            'title': 'Test Data',
+            'text': 'My email is john.doe@example.com and my phone is +1-555-987-6543. I live at 123 Main Street.'
           },
         ];
 
@@ -383,7 +383,9 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // FIXED: Header with proper constraints
                 Container(
+                  width: double.infinity,
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Color(0xFFE0F2FE),
@@ -401,6 +403,8 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF0C7FF2),
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
                         ),
                       ),
                       IconButton(
@@ -412,45 +416,54 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                 ),
                 Flexible(
                   child: Container(
+                    width: double.infinity,
                     padding: EdgeInsets.all(16),
                     child: _buildFullContentWidget(item),
                   ),
                 ),
+                // FIXED: Properly aligned buttons with constraints
                 Container(
+                  width: double.infinity,
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ScanAnalysisScreen(mediaItem: item),
-                            ),
-                          );
-                        },
-                        icon: Icon(Icons.scanner, size: 18),
-                        label: Text('Scan'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF0C7FF2),
-                          foregroundColor: Colors.white,
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ScanAnalysisScreen(mediaItem: item),
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.scanner, size: 18),
+                          label: Text('Scan'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF0C7FF2),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
                       ),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _onLongPress(item);
-                        },
-                        icon: Icon(Icons.more_horiz, size: 18),
-                        label: Text('Options'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Color(0xFF0C7FF2),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _onLongPress(item);
+                          },
+                          icon: Icon(Icons.more_horiz, size: 18),
+                          label: Text('Options'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Color(0xFF0C7FF2),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
                       ),
                     ],
@@ -474,6 +487,7 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
+                  width: double.infinity,
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Color(0xFFF1F5F9),
@@ -494,11 +508,13 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                   children: [
                     Icon(Icons.lock, size: 16, color: Color(0xFF10B981)),
                     SizedBox(width: 8),
-                    Text(
-                      'Encrypted and stored securely',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF10B981),
+                    Expanded(
+                      child: Text(
+                        'Encrypted and stored securely',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF10B981),
+                        ),
                       ),
                     ),
                   ],
@@ -513,6 +529,7 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
           child: Column(
             children: [
               Container(
+                width: double.infinity,
                 constraints: BoxConstraints(
                   maxHeight: 400,
                 ),
@@ -526,11 +543,14 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                 children: [
                   Icon(Icons.image, size: 16, color: Color(0xFF64748B)),
                   SizedBox(width: 8),
-                  Text(
-                    'Image • ${item['fileName'] ?? 'Unknown file'}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
+                  Expanded(
+                    child: Text(
+                      'Image • ${item['fileName'] ?? 'Unknown file'}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -544,6 +564,7 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
           child: Column(
             children: [
               Container(
+                width: double.infinity,
                 height: 300,
                 decoration: BoxDecoration(
                   color: Color(0xFFE2E8F0),
@@ -568,11 +589,15 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                         ),
                       ),
                       SizedBox(height: 8),
-                      Text(
-                        'Tap to play (video player not implemented)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Tap to play (video player not implemented)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ],
@@ -584,11 +609,14 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                 children: [
                   Icon(Icons.videocam, size: 16, color: Color(0xFF64748B)),
                   SizedBox(width: 8),
-                  Text(
-                    'Video • Duration: 1:23',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
+                  Expanded(
+                    child: Text(
+                      'Video • Duration: 1:23',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -598,6 +626,7 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
         );
       default:
         return Container(
+          width: double.infinity,
           child: Center(
             child: Text(
               'Content type not supported',
@@ -638,11 +667,14 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                       children: [
                         Icon(item['thumbnail'] ?? Icons.help, color: Color(0xFF0C7FF2)),
                         SizedBox(width: 12),
-                        Text(
-                          item['title'] ?? 'Unknown',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Text(
+                            item['title'] ?? 'Unknown',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -828,7 +860,7 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
             child: Text(
               item['text'] ?? 'No content',
               style: TextStyle(
-                fontSize: 14, // Changed from 10 to 14 for better readability
+                fontSize: 14,
                 color: Color(0xFF334155),
                 height: 1.2,
               ),
@@ -850,10 +882,8 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
           backgroundColor: Colors.white,
           elevation: 0,
           shadowColor: Colors.black26,
-          leading: IconButton(
-            icon: Icon(Icons.close, color: Color(0xFF334155)),
-            onPressed: () => Navigator.pop(context),
-          ),
+          // REMOVED: leading close button
+          automaticallyImplyLeading: false,
           title: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
@@ -871,7 +901,6 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
             ],
           ),
           centerTitle: true,
-          actions: [SizedBox(width: 48)],
         ),
         body: Center(
           child: Column(
@@ -892,10 +921,8 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
         backgroundColor: Colors.white,
         elevation: 0,
         shadowColor: Colors.black26,
-        leading: IconButton(
-          icon: Icon(Icons.close, color: Color(0xFF334155)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        // REMOVED: leading close button
+        automaticallyImplyLeading: false,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
@@ -913,7 +940,6 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
           ],
         ),
         centerTitle: true,
-        actions: [SizedBox(width: 48)],
       ),
       body: Column(
         children: [
