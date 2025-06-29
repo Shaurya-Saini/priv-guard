@@ -16,14 +16,6 @@ PrivGuard educates and protects users by identifying:
 
 ---
 
-## 🔒 Example Privacy Risks Detected
-1. Location check-ins & travel posts
-2. Birthdays, graduations, event shares
-3. Visible IDs, tickets, addresses in media
-4. Other important personal detials that might put the user at risk if publically available
-
----
-
 ## 📱 Core Features
 
 ### Upload & Local Scan
@@ -41,7 +33,6 @@ PrivGuard educates and protects users by identifying:
 - Input Instagram/Twitter handle + email
 - Uses `Instaloader` / `snscrape` to fetch data
 - NLP analysis of bio, captions, hashtags
-- Sends email report via SMTP or Firebase
 - Auto-rescan every 30 days with push alerts
 
 ---
@@ -102,14 +93,18 @@ PrivGuard educates and protects users by identifying:
 ## Getting Started
 
 To Run the application locally-
-1. Clone the repository 
+1. This repo uses Git LFS to store large model files. Before cloning, install Git LFS <br>
+    `git lfs install`.
+2. Clone the repository 
     <br>
     `git clone https://github.com/Shaurya-Saini/Priv_Guard.git`<br>
-    `cd Priv_Guard`
-2. Create project
+    `cd Priv_Guard`<br>
+    `git lfs pull`
+4. Create project
     <br>
     `flutter create .`
-3. Run the application from `main.dart`
+3. Run the application using an emulator from Android studio <br>
+    `flutter run`
 
 <br>
 
