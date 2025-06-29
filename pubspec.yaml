@@ -38,7 +38,8 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   encrypt: ^5.0.1
   path_provider: ^2.1.2
-
+  tflite_flutter: ^0.11.0
+  tokenizer: ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -63,7 +64,11 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
+  assets:
+    - assets/pii_model_no_quant.tflite
+    - assets/vocab.txt
+    - assets/tokenizer_config.json
+    - assets/tokenizer.json
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 
