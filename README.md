@@ -1,5 +1,7 @@
 # PrivGuard – AI Personal Privacy Risk Analyzer
 
+![Hacktoberfest 2025 banner](./priv_guard_hacktoberfest.png)
+
 PrivGuard is a mobile-first, privacy-focused app that helps users detect **oversharing risks** in their digital content. Whether it’s social media posts, images, or bios, PrivGuard uses **custom on-device AI** to analyze content and flag potential **privacy threats**, ensuring your data **never leaves your phone** or trusted backend.
 
 ---
