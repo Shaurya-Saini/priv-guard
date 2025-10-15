@@ -1229,11 +1229,13 @@ class DistilBertTokenizer {
 
   // Pre-tokenize text according to BertPreTokenizer
   List<String> _preTokenize(String text) {
-    // Split on whitespace and punctuation
-    // This is a simplified version of BertPreTokenizer
-    final pattern = RegExp(r'\s+|[^\w\s]');
-    final parts = text.split(pattern);
-    return parts.where((part) => part.isNotEmpty).toList();
+    // Tokenize into either contiguous word characters or single punctuation
+    // characters. This keeps punctuation (like '@' and '.') as separate tokens
+    // instead of stripping them out. It roughly matches the behavior of
+    // BertPreTokenizer which keeps punctuation as token boundaries.
+    final pattern = RegExp(r"\w+|[^\s\w]");
+    final matches = pattern.allMatches(text);
+    return matches.map((m) => m.group(0) ?? '').where((s) => s.isNotEmpty).toList();
   }
 
   List<String> tokenize(String text) {
@@ -1560,8 +1562,29 @@ List<PIIEntity> _processPredictions(
         // Inside current entity
         final entityType = labelName.substring(2);
         if (currentEntity.label == entityType) {
+          // Decide separator behavior when appending this token.
+          final rawToken = token;
+          final clean = _cleanToken(rawToken);
+
+          // Determine if the token is a subword (WordPiece) or pure punctuation
+          final bool isSubword = rawToken.startsWith('##');
+          final bool isPunct = RegExp(r"^[^\w\s]+").hasMatch(clean);
+
+          String sep = ' ';
+          if (isSubword || isPunct) {
+            // Attach directly without a space for subwords and punctuation
+            sep = '';
+          } else {
+            // If current text already ends with punctuation (like '@' or '.')
+            // don't insert a space before the next token
+            if (currentEntity.text.isNotEmpty &&
+                RegExp(r"[^\w\s]").hasMatch(currentEntity.text.substring(currentEntity.text.length - 1))) {
+              sep = '';
+            }
+          }
+
           currentEntity = PIIEntity(
-            text: currentEntity.text + _cleanToken(token),
+            text: currentEntity.text + sep + clean,
             label: currentEntity.label,
             start: currentEntity.start,
             end: i,
@@ -1582,6 +1605,21 @@ List<PIIEntity> _processPredictions(
   }
 
   return entities;
+}
+
+// Test helper: expose a simplified detection wrapper for unit tests.
+// This avoids running the TFLite model and allows tests to call the
+// token->entity reconstruction logic with mocked logits.
+List<PIIEntity> test_processPredictionsWithMockedLogits(
+    List<List<double>> mockedLogits, List<String> tokens) {
+  return _processPredictions(mockedLogits, tokens, tokens.join(' '));
+}
+
+// Test-only API: allow tests to inject a tokenizer instance. This makes it
+// possible to unit test token->entity reconstruction without running the
+// TFLite model.
+void setTestTokenizerForUnitTests(DistilBertTokenizer tokenizer) {
+  _tokenizer = tokenizer;
 }
 
 String _cleanToken(String token) {
