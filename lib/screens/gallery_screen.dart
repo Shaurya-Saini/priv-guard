@@ -812,27 +812,29 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                         );
                       },
                     ),
-                    ListTile(
-                      leading: Icon(Icons.edit, color: Color(0xFF0C7FF2)),
-                      title: Text('Edit caption'),
-                      subtitle: Text('Add or modify the image caption/description'),
-                      onTap: () async {
-                        Navigator.pop(context);
-                        final newCaption = await _promptForCaption(initial: item['caption'] ?? '');
-                        if (newCaption != null) {
-                          setState(() {
-                            item['caption'] = newCaption.trim();
-                          });
-                          final storageName = item['storageName'] ?? item['fileName'];
-                          if ((newCaption.trim()).isEmpty) {
-                            await _deleteImageMetadata(storageName);
-                          } else {
-                            await _saveImageMetadata(storageName, {'caption': newCaption.trim(), 'fileName': item['fileName'] ?? storageName});
+                    // Only show caption option for image posts
+                    if (item['type'] == 'image')
+                      ListTile(
+                        leading: Icon(Icons.edit, color: Color(0xFF0C7FF2)),
+                        title: Text('Edit caption'),
+                        subtitle: Text('Add or modify the image caption/description'),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final newCaption = await _promptForCaption(initial: item['caption'] ?? '');
+                          if (newCaption != null) {
+                            setState(() {
+                              item['caption'] = newCaption.trim();
+                            });
+                            final storageName = item['storageName'] ?? item['fileName'];
+                            if ((newCaption.trim()).isEmpty) {
+                              await _deleteImageMetadata(storageName);
+                            } else {
+                              await _saveImageMetadata(storageName, {'caption': newCaption.trim(), 'fileName': item['fileName'] ?? storageName});
+                            }
+                            _refreshDisplayItems();
                           }
-                          _refreshDisplayItems();
-                        }
-                      },
-                    ),
+                        },
+                      ),
                     ListTile(
                       leading: Icon(Icons.delete, color: Colors.red[600]),
                       title: Text('Delete'),
