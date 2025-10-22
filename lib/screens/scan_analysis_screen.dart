@@ -105,6 +105,35 @@ class _ScanAnalysisScreenState extends State<ScanAnalysisScreen> {
           // Fallback to demo data
           _setDemoData(type);
         }
+      } else if (type == 'image') {
+        // If the image has a caption, run PII detection on the caption text
+        final caption = widget.mediaItem['caption'] ?? '';
+        if (caption.isNotEmpty && _isInitialized) {
+          final piiEntities = await detectPII(caption);
+          final riskScore = _calculateRiskScore(piiEntities);
+          final riskLevel = _getRiskLevel(riskScore);
+          final detectedRisks = _generateDetectedRisks(piiEntities);
+          final suggestions = _generateSuggestions(piiEntities);
+
+          setState(() {
+            _isScanning = false;
+            _analysisResult = {
+              'riskScore': riskScore,
+              'riskLevel': riskLevel,
+              'detectedRisks': detectedRisks,
+              'suggestions': suggestions,
+              'piiEntities': piiEntities,
+              'technicalDetails': {
+                'personalDataPoints': piiEntities.length,
+                'sensitiveKeywords':
+                    piiEntities.map((e) => e.label).toSet().toList(),
+                'privacyScore': (100 - riskScore) / 10,
+              }
+            };
+          });
+        } else {
+          _setDemoData(type);
+        }
       } else {
         _setDemoData(type);
       }

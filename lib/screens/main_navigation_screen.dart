@@ -18,30 +18,32 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          Expanded(
-            child: _screens[_currentIndex],
-          ),
-          // Footer section
-          Container(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: _screens[_currentIndex],
+            ),
+            // Footer section
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                ),
+              ),
+              child: Text(
+                '© 2024 PrivGuard - Your Privacy Guardian',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF94A3B8),
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
-            child: Text(
-              '© 2024 PrivGuard - Your Privacy Guardian',
-              style: TextStyle(
-                fontSize: 10,
-                color: Color(0xFF94A3B8),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

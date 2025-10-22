@@ -24,6 +24,9 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
   bool _showAddOptions = false;
   late AnimationController _fabAnimationController;
   late Animation<double> _fabAnimation;
+  final TextEditingController _searchController = TextEditingController();
+  bool _sortAscending = true;
+  List<Map<String, dynamic>> _displayItems = [];
 
   List<Map<String, dynamic>> _mediaItems = [];
 
@@ -43,6 +46,7 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
   @override
   void dispose() {
     _fabAnimationController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -50,6 +54,8 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
     try {
       await _initEncryptionKey();
       await _loadAllData();
+  // initialize display items
+  _refreshDisplayItems();
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -63,6 +69,29 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
         });
       }
     }
+  }
+
+  void _refreshDisplayItems() {
+    final query = _searchController.text.trim().toLowerCase();
+    List<Map<String, dynamic>> items = List.from(_mediaItems);
+
+    if (query.isNotEmpty) {
+      items = items.where((it) {
+        final caption = (it['caption'] ?? '').toString().toLowerCase();
+        final title = (it['title'] ?? '').toString().toLowerCase();
+        return caption.contains(query) || title.contains(query);
+      }).toList();
+    }
+
+    items.sort((a, b) {
+      final aKey = (a['caption'] ?? a['title'] ?? '').toString().toLowerCase();
+      final bKey = (b['caption'] ?? b['title'] ?? '').toString().toLowerCase();
+      return _sortAscending ? aKey.compareTo(bKey) : bKey.compareTo(aKey);
+    });
+
+    setState(() {
+      _displayItems = items;
+    });
   }
 
   Future<void> _initEncryptionKey() async {
@@ -164,14 +193,36 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
       
       for (var file in files) {
         if (file.path.endsWith('.enc') && !file.path.contains('text_posts')) {
-          final fileName = file.path.split('/').last.replaceFirst('.enc', '');
+          final baseName = file.path.split('/').last.replaceFirst('.enc', '');
+          // skip meta files (they end with .meta.enc)
+          if (baseName.endsWith('.meta')) continue;
+
+          String storageName = baseName; // storage identifier (new files use timestamp_+name)
+          String? caption;
+          String? originalName;
+          try {
+            final metaPath = '${dir.path}/$storageName.meta.enc';
+            final metaFile = File(metaPath);
+            if (await metaFile.exists()) {
+              final metaBytes = await metaFile.readAsBytes();
+              final metaJson = await _decryptData(metaBytes);
+              final meta = json.decode(metaJson);
+              caption = meta['caption'] as String?;
+              originalName = meta['fileName'] as String?;
+            }
+          } catch (e) {
+            // ignore metadata read errors
+          }
+
           _mediaItems.add({
             'id': DateTime.now().millisecondsSinceEpoch + _mediaItems.length,
             'type': 'image',
             'thumbnail': Icons.image,
-            'title': fileName,
+            'title': originalName ?? storageName,
             'encryptedPath': file.path,
-            'fileName': fileName,
+            'fileName': originalName ?? storageName,
+            'storageName': storageName,
+            'caption': caption,
           });
         }
       }
@@ -228,10 +279,33 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
     final encrypter = encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
     final encrypted = encrypter.encryptBytes(imageBytes, iv: iv);
     final dir = await getApplicationDocumentsDirectory();
-    final filePath = '${dir.path}/$fileName.enc';
+    // Use a unique storage name to avoid filename collisions
+    final storageName = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    final filePath = '${dir.path}/$storageName.enc';
     final file = File(filePath);
     await file.writeAsBytes([...iv.bytes, ...encrypted.bytes]);
     return filePath;
+  }
+
+  Future<void> _saveImageMetadata(String storageName, Map<String, dynamic> metadata) async {
+    if (_aesKey == null) throw Exception('Encryption key not initialized');
+    final dir = await getApplicationDocumentsDirectory();
+    final metaFile = File('${dir.path}/$storageName.meta.enc');
+    final jsonString = json.encode(metadata);
+    final iv = encrypt.IV.fromSecureRandom(16);
+    final encrypter = encrypt.Encrypter(encrypt.AES(_aesKey!, mode: encrypt.AESMode.cbc));
+    final encrypted = encrypter.encrypt(jsonString, iv: iv);
+    await metaFile.writeAsBytes([...iv.bytes, ...encrypted.bytes]);
+  }
+
+  Future<void> _deleteImageMetadata(String storageName) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final metaFile = File('${dir.path}/$storageName.meta.enc');
+      if (await metaFile.exists()) await metaFile.delete();
+    } catch (e) {
+      // ignore
+    }
   }
 
   Future<Uint8List> _loadAndDecryptImage(String encryptedPath) async {
@@ -282,9 +356,13 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                 setState(() {
                   _mediaItems.removeWhere((element) => element['id'] == item['id']);
                 });
+                _refreshDisplayItems();
                 
                 if (item['encryptedPath'] != null) {
-                  await File(item['encryptedPath']).delete().catchError((_) {});
+                  await File(item['encryptedPath']).delete().catchError((_) => File(''));
+                  if (item['storageName'] != null) {
+                    await _deleteImageMetadata(item['storageName']);
+                  }
                 }
                 
                 if (item['type'] == 'text') {
@@ -307,8 +385,15 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
       );
       if (pickedFile != null && mounted) {
         final Uint8List imageBytes = await pickedFile.readAsBytes();
+        // Prompt for optional caption before saving
+        final caption = await _promptForCaption(initial: '');
+
         final String encryptedPath = await _saveEncryptedImage(imageBytes, pickedFile.name);
-        
+        final storageName = encryptedPath.split('/').last.replaceFirst('.enc', '');
+        if (caption != null && caption.trim().isNotEmpty) {
+          await _saveImageMetadata(storageName, {'caption': caption.trim(), 'fileName': pickedFile.name});
+        }
+
         setState(() {
           _mediaItems.add({
             'id': DateTime.now().millisecondsSinceEpoch,
@@ -316,9 +401,12 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
             'thumbnail': Icons.image,
             'title': pickedFile.name,
             'fileName': pickedFile.name,
+            'storageName': storageName,
             'encryptedPath': encryptedPath,
+            'caption': caption?.trim(),
           });
         });
+  _refreshDisplayItems();
       }
     } catch (e) {
       if (mounted) {
@@ -340,8 +428,14 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
       );
       if (capturedFile != null && mounted) {
         final Uint8List imageBytes = await capturedFile.readAsBytes();
+        final caption = await _promptForCaption(initial: '');
+
         final String encryptedPath = await _saveEncryptedImage(imageBytes, capturedFile.name);
-        
+        final storageName = encryptedPath.split('/').last.replaceFirst('.enc', '');
+        if (caption != null && caption.trim().isNotEmpty) {
+          await _saveImageMetadata(storageName, {'caption': caption.trim(), 'fileName': capturedFile.name});
+        }
+
         setState(() {
           _mediaItems.add({
             'id': DateTime.now().millisecondsSinceEpoch,
@@ -349,9 +443,12 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
             'thumbnail': Icons.image,
             'title': capturedFile.name,
             'fileName': capturedFile.name,
+            'storageName': storageName,
             'encryptedPath': encryptedPath,
+            'caption': caption?.trim(),
           });
         });
+  _refreshDisplayItems();
       }
     } catch (e) {
       if (mounted) {
@@ -555,6 +652,27 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                   ),
                 ],
               ),
+              if (item['caption'] != null && (item['caption'] as String).isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.note, size: 14, color: Color(0xFF94A3B8)),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item['caption'],
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF475569),
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         );
@@ -694,6 +812,29 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                         );
                       },
                     ),
+                    // Only show caption option for image posts
+                    if (item['type'] == 'image')
+                      ListTile(
+                        leading: Icon(Icons.edit, color: Color(0xFF0C7FF2)),
+                        title: Text('Edit caption'),
+                        subtitle: Text('Add or modify the image caption/description'),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final newCaption = await _promptForCaption(initial: item['caption'] ?? '');
+                          if (newCaption != null) {
+                            setState(() {
+                              item['caption'] = newCaption.trim();
+                            });
+                            final storageName = item['storageName'] ?? item['fileName'];
+                            if ((newCaption.trim()).isEmpty) {
+                              await _deleteImageMetadata(storageName);
+                            } else {
+                              await _saveImageMetadata(storageName, {'caption': newCaption.trim(), 'fileName': item['fileName'] ?? storageName});
+                            }
+                            _refreshDisplayItems();
+                          }
+                        },
+                      ),
                     ListTile(
                       leading: Icon(Icons.delete, color: Colors.red[600]),
                       title: Text('Delete'),
@@ -842,6 +983,56 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
     }
   }
 
+  Future<String?> _promptForCaption({required String initial}) async {
+    String? result;
+    final TextEditingController controller = TextEditingController(text: initial);
+    bool disposed = false;
+
+    await showDialog<String?>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Image caption'),
+          content: TextField(
+            controller: controller,
+            maxLines: 3,
+            maxLength: 500,
+            decoration: InputDecoration(
+              hintText: 'Add a caption or short description (optional)',
+              border: OutlineInputBorder(),
+              counterText: '',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                result = controller.text;
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!disposed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+        disposed = true;
+      });
+  }
+
+    return result;
+  }
+
   Widget _buildTextContentWidget(Map<String, dynamic> item) {
     return Container(
       padding: EdgeInsets.all(8),
@@ -959,7 +1150,7 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                   ),
                   SizedBox(height: 16),
                   Expanded(
-                    child: _mediaItems.isEmpty
+                    child: _displayItems.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -989,77 +1180,115 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
                               ],
                             ),
                           )
-                        : GridView.builder(
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                              childAspectRatio: 1.0,
-                            ),
-                            itemCount: _mediaItems.length,
-                            itemBuilder: (context, index) {
-                              final item = _mediaItems[index];
-                              return GestureDetector(
-                                onTap: () => _showFullContent(item),
-                                onLongPress: () => _onLongPress(item),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
+                        : Column(
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _searchController,
+                                        decoration: InputDecoration(
+                                          hintText: 'Search by caption or title',
+                                          prefixIcon: Icon(Icons.search),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          isDense: true,
+                                        ),
+                                        onChanged: (_) => _refreshDisplayItems(),
                                       ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Stack(
-                                      children: [
-                                        if (item['type'] == 'image')
-                                          _buildImageWidget(item)
-                                        else if (item['type'] == 'text')
-                                          Container(
-                                            color: Colors.white,
-                                            child: _buildTextContentWidget(item),
-                                          )
-                                        else
-                                          Container(
-                                            color: Colors.white,
-                                            child: Center(
-                                              child: Icon(
-                                                item['thumbnail'] ?? Icons.help,
-                                                size: 32,
-                                                color: Color(0xFF0C7FF2),
-                                              ),
-                                            ),
-                                          ),
-                                        if (item['type'] == 'video')
-                                          Positioned(
-                                            bottom: 4,
-                                            right: 4,
-                                            child: Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: Colors.black54,
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                '1:23',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
                                     ),
-                                  ),
+                                    SizedBox(width: 8),
+                                    IconButton(
+                                      onPressed: () {
+                                        _sortAscending = !_sortAscending;
+                                        _refreshDisplayItems();
+                                      },
+                                      icon: Icon(
+                                        _sortAscending ? Icons.sort_by_alpha : Icons.sort,
+                                        color: Color(0xFF0C7FF2),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            },
+                              ),
+                              Expanded(
+                                child: GridView.builder(
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 8,
+                                    mainAxisSpacing: 8,
+                                    childAspectRatio: 1.0,
+                                  ),
+                                  itemCount: _displayItems.length,
+                                  itemBuilder: (context, index) {
+                                    final item = _displayItems[index];
+                                    return GestureDetector(
+                                      onTap: () => _showFullContent(item),
+                                      onLongPress: () => _onLongPress(item),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.1),
+                                              blurRadius: 4,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: Stack(
+                                            children: [
+                                              if (item['type'] == 'image')
+                                                _buildImageWidget(item)
+                                              else if (item['type'] == 'text')
+                                                Container(
+                                                  color: Colors.white,
+                                                  child: _buildTextContentWidget(item),
+                                                )
+                                              else
+                                                Container(
+                                                  color: Colors.white,
+                                                  child: Center(
+                                                    child: Icon(
+                                                      item['thumbnail'] ?? Icons.help,
+                                                      size: 32,
+                                                      color: Color(0xFF0C7FF2),
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (item['type'] == 'video')
+                                                Positioned(
+                                                  bottom: 4,
+                                                  right: 4,
+                                                  child: Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.black54,
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      '1:23',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 10,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                   ),
                 ],
