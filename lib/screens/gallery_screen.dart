@@ -1024,9 +1024,11 @@ class _GalleryScreenState extends State<GalleryScreen> with TickerProviderStateM
     );
 
     if (!disposed) {
-      controller.dispose();
-      disposed = true;
-    }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+        disposed = true;
+      });
+  }
 
     return result;
   }
